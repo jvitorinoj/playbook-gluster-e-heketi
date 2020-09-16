@@ -1,0 +1,54 @@
+---
+- name: para firewall
+  shell: systemctl stop firewalld
+
+- name: Carrega modulos adicionais no Kernel
+  become: yes
+  copy:
+    dest: "/etc/modules-load.d/glusterfs.conf"
+    content: |
+      dm_snapshot
+      dm_mirror
+      dm_thin_pool
+
+- name: modprobe 
+  shell: |
+    modprobe dm_snapshot
+    modprobe dm_mirror
+    modprobe dm_thin_pool
+
+- name: Adiciona CentOS repo
+  copy:
+    src: centos.repo
+    dest: /etc/yum.repos.d/cemtos.repo
+
+- name: Adiciona repo oracle linux glusterds
+  yum:
+    name: oracle-gluster-release-el7.x86_64
+    state: present
+
+- name: Atualiza lista de repositorios
+  shell: yum repolist
+  
+- name: instala glusterfs-fuse
+  yum:
+      name: glusterfs-fuse
+      state: present
+
+- name: instala glusterfs
+  yum:
+      name: glusterfs
+      state: present
+
+- name: instala glusterfs server
+  yum:
+      name: glusterfs-server
+      state: present
+
+
+- name: Ativa e inicia serviços do gluster 
+  become: yes
+  systemd:
+    name: glusterd
+    enabled: yes
+    state: started

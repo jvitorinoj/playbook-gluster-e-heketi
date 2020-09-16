@@ -1,0 +1,122 @@
+- name: Parar serviço heketi
+  ignore_errors: yes
+  systemd:
+    state: stopped
+    name: heketi
+
+- name: download heketi
+  get_url:
+    url: '{{ heketi_server_url }}'
+    dest: /tmp/
+    validate_certs: no
+
+- name: Salva nome dos arquivos tar.gz do heketi como variavel
+  set_fact: 
+    heketi_server: "{{heketi_server_url.split('/')}}"
+
+- name: Descompacta e instala heketi server
+  unarchive:
+    src: '/tmp/{{heketi_server[-1]}}'
+    dest: /tmp/
+    remote_src: yes
+
+- name: Adiciona executaveis do heketi no path
+  become: yes
+  shell: cp /tmp/heketi/heketi /usr/local/bin && cp /tmp/heketi/heketi-cli /usr/local/bin && chmod +x /usr/local/bin/heketi*
+
+- name: Adiciona grupo heketi
+  become: yes
+  group:
+      name: heketi
+      state: present
+      system: yes
+
+- name: Adiciona usuario heketi
+  become: yes
+  user:
+      name: heketi
+      system: yes
+      state: present
+      group: heketi
+
+- name: Adiciona pasta de configurações
+  file:
+      path:  "{{ item}}"
+      state: directory
+      owner: heketi
+      group: heketi
+  loop:
+    - /etc/heketi
+    - /var/lib/heketi
+    - /var/log/heketi
+
+ 
+- name: download arquivo env de exemplo
+  get_url:
+      url: 'https://raw.githubusercontent.com/heketi/heketi/master/extras/systemd/heketi.env'
+      dest: /etc/heketi/heketi.env
+ 
+- name: Cria serviço
+  copy:
+    src: heketi.service
+    dest: /etc/systemd/system/heketi.service
+ 
+- name: Copia arquivo de topologia
+  template:
+    src: topology.json.j2
+    dest: /etc/heketi/topology.json
+
+- name: Copia arquivo heketi.json
+  copy: 
+    src: heketi.json
+    dest: /etc/heketi/heketi.json
+ 
+
+- name: Edita heketi.json
+  replace:
+    path: "/etc/heketi/heketi.json"
+    regexp: "{{item.regexp}}"
+    replace: "{{item.replace}}"
+  with_items: 
+    - { regexp: 'adminkeyaqui', replace: '{{heketi_admin_secret}}'}
+    - { regexp: 'userkeyaqui', replace: '{{heketi_user_secret}}'}
+    - { regexp: 'sshuser', replace: '{{sshuser}}'}
+
+- name: Configura permissões
+  file:
+   path:  /etc/heketi/topology.json
+   owner: heketi
+   group: heketi
+
+- name: Inicia serviço heketi
+  systemd:
+    state: started
+    name: heketi
+    daemon-reload: yes
+    enabled: yes
+
+
+- name: Carrega arquivo de topologia no heketi
+  become: yes
+  shell: '/usr/local/bin/heketi-cli topology load --user admin --secret {{heketi_admin_secret}} --json=/etc/heketi/topology.json'
+
+- name: Adiciona variaveis de ambiente para usar o heketi-cli
+  become: yes
+  lineinfile:
+    dest: "/root/.bashrc"
+    state: present
+    regexp: "{{item.regexp}}"
+    line: "{{item.line}}"
+  with_items: 
+    - { regexp: '^export HEKETI_CLI_SERVER', line: 'export HEKETI_CLI_SERVER=http://localhost:8080'}
+    - { regexp: '^export HEKETI_CLI_USER', line: 'export HEKETI_CLI_USER=admin'}
+    - { regexp: '^export HEKETI_CLI_KEY', line: 'export HEKETI_CLI_KEY={{heketi_admin_secret}}'}
+
+- name: Teste
+  environment:
+    HEKETI_CLI_SERVER: http://localhost:8080
+    HEKETI_CLI_USER: admin
+    HEKETI_CLI_KEY: '{{heketi_admin_secret}}'
+  shell: |
+    /usr/local/bin/heketi-cli cluster list
+    /usr/local/bin/heketi-cli node list

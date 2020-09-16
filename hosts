@@ -1,0 +1,10 @@
+# host onde serão instalados os serviço do gluster e com discos diponiveis
+[gluster_servers]
+gfs01
+gfs02
+gfs03
+
+# Host onde sera instalado o serviço do heketi. 
+# Apenas um host, de preferência um dos hosts acima.
+[heketi]
+gfs01

@@ -1,0 +1,18 @@
+---
+ - name: Instala gluster
+   hosts: gluster_servers
+   roles:
+     - glusterfs
+
+ - name: Instala e configura heketi
+   hosts: [heketi]
+   vars:
+     heketi_client_url: 'https://github.com/heketi/heketi/releases/download/v10.0.0/heketi-client-v10.0.0.linux.amd64.tar.gz'
+     heketi_server_url: 'https://github.com/heketi/heketi/releases/download/v10.0.0/heketi-v10.0.0.linux.amd64.tar.gz'
+     # Uma senha pode ser gerada com `openssl rand -hex 9`
+     heketi_admin_secret: a68869a6ed10adffd2
+     heketi_user_secret: 6ac5eb6b8a2d8d2fd0
+     sshuser:  ansible.hm
+   roles:
+     - heketi
+     

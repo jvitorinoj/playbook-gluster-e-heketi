@@ -1,0 +1,23 @@
+---
+# GlusterFS nodes
+gluster_servers:
+  - servername: srv1
+    serverip: 10.10.0.1
+    zone: 1
+    disks:
+      - /dev/sdb
+      - /dev/sdc
+
+  - servername: srv2
+    serverip: 10.10.0.2
+    zone: 1
+    disks:
+      - /dev/sdb
+      - /dev/sdc
+  - servername: srv3
+    serverip: 10.10.0.3
+    zone: 1
+    disks:
+      - /dev/sdb
+      - /dev/sdc
+
